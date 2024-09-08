@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Task } from '../types/types'; // Import Task type
+import { Task } from '../types/types';
 import { useDispatch } from 'react-redux';
-import { addTask } from '../features/tasks/tasksSlice';
+import { createTaskAsync } from '../features/tasks/tasksAPI';
+import { AppDispatch } from '../app/store';
 
 interface CreateTaskModalProps {
   onClose: () => void;
-  users: Array<{ id: string; name: string }>; // Assuming users have id and name
+  users: Array<{ _id: string; username: string }>;
 }
 
 const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, users }) => {
@@ -13,20 +14,30 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, users }) => 
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
   const [assignedTo, setAssignedTo] = useState('');
-  const dispatch = useDispatch();
+  const [status, setStatus] = useState('');
+  const dispatch = useDispatch<AppDispatch>();
 
   const handleSave = () => {
-    const newTask: Task = {
-      id: Date.now().toString(), // Use a unique ID generator like `Date.now()`
+    if (!assignedTo) {
+      alert('Please assign the task to a user.');
+      return;
+    }
+
+    const newTask: Omit<Task, 'id'> = {
       title,
       description,
       priority,
+      status,
       assignedTo,
       createdOn: new Date().toISOString(),
-      createdBy: 'currentUserId', // Replace with the actual user ID
+      createdBy: 'currentUserId', // Replace with actual current user's ID
+      _id: '', // Leave _id empty
+      taskNumber: undefined, // Remove taskNumber since it will be handled by backend
     };
 
-    dispatch(addTask(newTask)); // Dispatch the addTask action
+    console.log('New Task:', newTask);
+
+    dispatch(createTaskAsync(newTask));
     onClose();
   };
 
@@ -38,7 +49,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, users }) => 
         <input
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)} // This ensures `setTitle` is used
+          onChange={(e) => setTitle(e.target.value)}
         />
       </label>
       <label>
@@ -60,14 +71,27 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, users }) => 
         </select>
       </label>
       <label>
+        Status:
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as 'Active' | 'In Progress' | 'Completed' | 'Hold')}
+        >
+          <option value="Active">Active</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+          <option value="Hold">Hold</option>
+        </select>
+      </label>
+      <label>
         Assign to:
         <select
           value={assignedTo}
           onChange={(e) => setAssignedTo(e.target.value)}
         >
+          <option value="">Select a user</option>
           {users.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.name}
+            <option key={user._id} value={user._id}>
+              {user.username}
             </option>
           ))}
         </select>
